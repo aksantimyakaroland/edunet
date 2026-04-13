@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr" style="scroll-behavior:smooth;scrollbar-gutter:stable;">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <title>Edunet | Réseau Académique de l'UOB</title>
+  <meta name="description" content="Réseau social académique officiel des étudiants de l'Université Officielle de Bukavu — Bukavu, RDC."/>
+  <meta name="author" content="Roland Myaka"/>
+  <meta property="og:title" content="Edunet — UOB"/>
+  <meta property="og:description" content="Le réseau académique des étudiants de l'UOB Bukavu."/>
+  <meta property="og:image" content="/logo-uob.png"/>
+  <link rel="icon" type="image/png" href="/logo-uob.png"/>
+  <link rel="apple-touch-icon" href="/logo-uob.png"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Edunet"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'uob-blue':   '#0047AB',
+            'uob-red':    '#CE1126',
+            'brand-dark': '#0D1B2A',
+          },
+          fontFamily: { sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'] },
+          boxShadow: {
+            'soft':    '0 2px 15px -3px rgba(0,0,0,0.07),0 4px 6px -2px rgba(0,0,0,0.05)',
+            'premium': '0 20px 25px -5px rgba(0,0,0,0.08),0 10px 10px -5px rgba(0,0,0,0.03)',
+          },
+          animation: {
+            'fade-in-up': 'fadeInUp 0.35s cubic-bezier(0.4,0,0.2,1) forwards',
+            'fade-in':    'fadeIn 0.25s ease-out forwards',
+            'slide-in':   'slideIn 0.3s cubic-bezier(0.16,1,0.3,1) forwards',
+            'page-enter': 'pageEnter 0.4s cubic-bezier(0.4,0,0.2,1) forwards',
+          },
+          keyframes: {
+            fadeInUp:  { from:{opacity:'0',transform:'translateY(10px)'}, to:{opacity:'1',transform:'translateY(0)'} },
+            fadeIn:    { from:{opacity:'0'}, to:{opacity:'1'} },
+            slideIn:   { from:{transform:'translateX(100%)'}, to:{transform:'translateX(0)'} },
+            pageEnter: { from:{opacity:'0',transform:'translateY(4px) scale(0.99)'}, to:{opacity:'1',transform:'translateY(0) scale(1)'} },
+          },
+        },
+      },
+    };
+  </script>
+  <script type="importmap">
+  {
+    "imports": {
+      "react/":                      "https://aistudiocdn.com/react@^19.2.0/",
+      "react":                       "https://aistudiocdn.com/react@^19.2.0",
+      "react-dom/":                  "https://aistudiocdn.com/react-dom@^19.2.0/",
+      "react-dom":                   "https://aistudiocdn.com/react-dom@^19.2.0",
+      "react-router-dom":            "https://aistudiocdn.com/react-router-dom@^7.9.4",
+      "lucide-react":                "https://aistudiocdn.com/@lucide/lucide-react@^0.471.0",
+      "@supabase/supabase-js":       "https://aistudiocdn.com/@supabase/supabase-js@^2.76.1",
+      "date-fns":                    "https://aistudiocdn.com/date-fns@^4.1.0",
+      "date-fns/":                   "https://aistudiocdn.com/date-fns@^4.1.0/",
+      "date-fns/locale":             "https://aistudiocdn.com/date-fns@^4.1.0/locale",
+      "deno.ns":                     "https://aistudiocdn.com/deno.ns@^0.8.0",
+      "@tanstack/react-query":       "https://aistudiocdn.com/@tanstack/react-query@^5.66.0",
+      "react-intersection-observer": "https://esm.sh/react-intersection-observer@^10.0.2"
+    }
+  }
+  </script>
+  <style>
+    body{background:#F5F7FA;color:#1A2332;-webkit-font-smoothing:antialiased;overflow-x:hidden;-webkit-tap-highlight-color:transparent;user-select:none;}
+    input,textarea{user-select:text;}
+    .glass{background:rgba(255,255,255,0.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
+    ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:10px}
+    ::-webkit-scrollbar-thumb:hover{background:#0047AB}
+    .no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+    .page-transition{animation:pageEnter 0.4s cubic-bezier(0.4,0,0.2,1) forwards;will-change:transform,opacity}
+    .social-image-container{position:relative;width:100%;overflow:hidden;border-radius:2rem;background:#EEF2F7}
+    .social-image-container img{width:100%;height:auto;max-height:600px;object-fit:cover;display:block;transition:transform 0.6s cubic-bezier(0.4,0,0.2,1)}
+    .social-image-container:hover img{transform:scale(1.03)}
+    @media screen and (min-width:320px) and (max-width:900px) and (orientation:landscape){#landscape-lock{display:flex!important}#root{display:none!important}}
+    #landscape-lock{display:none;position:fixed;inset:0;background:#0D1B2A;color:white;z-index:9999;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px}
+  </style>
+</head>
+<body>
+  <div id="landscape-lock">
+    <div class="animate-bounce mb-6">
+      <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#0047AB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+    </div>
+    <h2 style="font-size:1.25rem;font-weight:900;font-style:italic;text-transform:uppercase;">Edunet &middot; UOB</h2>
+    <p style="margin-top:1rem;color:#94A3B8;font-weight:500;line-height:1.7rem;">Veuillez utiliser votre appareil en mode<br/><strong style="color:#fff;">portrait</strong>.</p>
+  </div>
+  <div id="modal-root"></div>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

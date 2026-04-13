@@ -1,0 +1,15 @@
+{
+  "short_name": "Edunet",
+  "name": "Edunet — Réseau Académique UOB",
+  "description": "Réseau social académique officiel des étudiants de l'Université Officielle de Bukavu.",
+  "categories": ["education", "social"],
+  "icons": [
+    { "src": "/logo-uob.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/logo-uob.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0047AB",
+  "background_color": "#FFFFFF"
+}
