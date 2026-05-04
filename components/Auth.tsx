@@ -1,16 +1,15 @@
 /**
  * @fileoverview Page d'authentification — Edunet / UOB
  *
- * CORRECTIF INSCRIPTION :
- * L'erreur "new row violates row-level security policy for table profiles"
- * venait du fait que le code faisait signUp() puis un UPDATE séparé sur
- * profiles. Mais après signUp(), la session n'est pas encore active
- * (email non confirmé) → auth.uid() = NULL → RLS bloque le UPDATE.
+ * CORRECTIONS :
+ * 1. Après l'inscription, l'utilisateur est connecté directement.
+ *    Plus de message "vérifiez votre boîte mail".
+ *    Le trigger sync_profile_from_auth() confirme l'email automatiquement
+ *    côté base de données dès l'inscription.
  *
- * Solution : toutes les données sont passées dans options.data de signUp().
- * Le trigger sync_profile_from_auth() les lit depuis raw_user_meta_data
- * et insère le profil complet en une seule opération SECURITY DEFINER.
- * Aucun UPDATE client après signUp().
+ * 2. Toutes les données passent dans options.data de signUp()
+ *    → lues par le trigger, insérées dans profiles sans UPDATE séparé
+ *    → plus d'erreur RLS "new row violates row-level security"
  *
  * @author Roland Myaka
  */
@@ -35,13 +34,15 @@ export const PROMOTIONS: { value: string; label: string; cycle: 'Licence' | 'Mas
 
 const AuthPage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
-  const [loading, setLoading]     = useState(false);
-  const [email, setEmail]         = useState('');
-  const [password, setPassword]   = useState('');
-  const [showPwd, setShowPwd]     = useState(false);
-  const [error, setError]         = useState<string | null>(null);
-  const [message, setMessage]     = useState<string | null>(null);
+  const [mode, setMode]         = useState<'login' | 'signup' | 'forgot'>('login');
+  const [loading, setLoading]   = useState(false);
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd]   = useState(false);
+  const [error, setError]       = useState<string | null>(null);
+  const [message, setMessage]   = useState<string | null>(null);
+
+  // Champs inscription
   const [fullName, setFullName]   = useState('');
   const [studentId, setStudentId] = useState('');
   const [faculty, setFaculty]     = useState('');
@@ -55,26 +56,40 @@ const AuthPage: React.FC = () => {
     else setMode('login');
   }, [searchParams]);
 
+  // ── Messages d'erreur lisibles ─────────────────────────────────────────
   const getFriendlyError = (err: any): string => {
     const msg = (err.message || '').toLowerCase();
-    if (msg.includes('invalid login credentials')) return 'Email ou mot de passe incorrect.';
-    if (msg.includes('already registered'))        return 'Cet email est déjà utilisé.';
-    if (msg.includes('user not found') || msg.includes('invalid email')) return 'Adresse email introuvable.';
-    if (msg.includes('password'))                  return 'Le mot de passe doit contenir au moins 6 caractères.';
+    if (msg.includes('invalid login credentials'))
+      return 'Email ou mot de passe incorrect.';
+    if (msg.includes('already registered') || msg.includes('user already registered'))
+      return 'Cet email est déjà utilisé par un autre étudiant.';
+    if (msg.includes('user not found') || msg.includes('invalid email'))
+      return 'Adresse email introuvable.';
+    if (msg.includes('password'))
+      return 'Le mot de passe doit contenir au moins 6 caractères.';
+    if (msg.includes('email not confirmed'))
+      return 'Email non confirmé. Contactez l\'administrateur.';
     return err.message || 'Une erreur est survenue. Réessayez.';
   };
 
+  // ── Soumission ──────────────────────────────────────────────────────────
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true); setError(null); setMessage(null);
+    setLoading(true);
+    setError(null);
+    setMessage(null);
 
     try {
+      // ── Connexion ──────────────────────────────────────────────────────
       if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        // La session est établie → App.tsx redirige automatiquement vers /
 
+      // ── Inscription ────────────────────────────────────────────────────
       } else if (mode === 'signup') {
-        // Validations
+
+        // Validations client
         if (fullName.trim().split(/\s+/).length < 2)
           throw new Error('Veuillez entrer votre Prénom et Nom.\nEx : Milka Bizimana');
         if (!gender)
@@ -82,16 +97,12 @@ const AuthPage: React.FC = () => {
         if (!promotion)
           throw new Error('Veuillez sélectionner votre promotion.');
         if (studentId && !/^\d{4,8}$/.test(studentId.trim()))
-          throw new Error('Matricule invalide — 4 à 8 chiffres uniquement.\nEx : 11111');
+          throw new Error('Matricule invalide — 4 à 8 chiffres.\nEx : 42486');
         if (password.length < 6)
           throw new Error('Le mot de passe doit contenir au moins 6 caractères.');
 
-        // ── CORRECTION CLÉ ────────────────────────────────────────
-        // Toutes les données dans options.data → lues par le trigger
-        // sync_profile_from_auth() qui insère le profil complet.
-        // On ne fait PLUS de UPDATE séparé (qui déclenchait l'erreur RLS).
-        // ─────────────────────────────────────────────────────────
-        const { error } = await supabase.auth.signUp({
+        // Créer l'utilisateur — email confirmé automatiquement par le trigger
+        const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -104,17 +115,43 @@ const AuthPage: React.FC = () => {
             },
           },
         });
-        if (error) throw error;
-        setMessage('Vérifiez votre boîte mail pour confirmer votre inscription.');
 
+        if (signUpError) throw signUpError;
+
+        // L'email est confirmé automatiquement côté base de données
+        // (trigger sync_profile_from_auth fait UPDATE auth.users SET email_confirmed_at)
+        // On tente une connexion immédiate
+        if (data.user) {
+          // Petit délai pour laisser le trigger s'exécuter
+          await new Promise(resolve => setTimeout(resolve, 800));
+
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+
+          if (signInError) {
+            // Si la connexion échoue (rare), afficher un message sans bloquer
+            setMessage('Compte créé ! Vous pouvez maintenant vous connecter.');
+            setMode('login');
+            setPassword('');
+          }
+          // Sinon la session est établie → App.tsx redirige vers /
+        }
+
+      // ── Mot de passe oublié ────────────────────────────────────────────
       } else {
-        if (!email) throw new Error('Veuillez entrer votre adresse email.');
+        if (!email)
+          throw new Error('Veuillez entrer votre adresse email.');
+
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/settings?view=password`,
         });
         if (error) throw error;
-        setMessage('Lien de récupération envoyé par email.');
+
+        setMessage('Lien de récupération envoyé — vérifiez votre boîte mail.');
       }
+
     } catch (err: any) {
       setError(getFriendlyError(err));
     } finally {
@@ -124,41 +161,50 @@ const AuthPage: React.FC = () => {
 
   const isLogin  = mode === 'login';
   const isForgot = mode === 'forgot';
-  const inputCls = 'w-full pl-11 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-uob-blue outline-none font-bold text-sm shadow-sm transition-all';
+
+  const inputCls =
+    'w-full pl-11 pr-4 py-4 bg-white border border-slate-200 rounded-2xl ' +
+    'focus:ring-2 focus:ring-uob-blue outline-none font-bold text-sm shadow-sm transition-all';
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-slate-50">
 
-      {/* Panneau gauche branding */}
+      {/* ── Panneau gauche (desktop) ──────────────────────────────────── */}
       <div className="hidden lg:flex lg:w-1/2 bg-brand-dark p-12 flex-col justify-between relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-uob-blue/20 blur-[100px] rounded-full -mr-48 -mt-48"/>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-uob-red/20 blur-[100px] rounded-full -ml-48 -mb-48"/>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-uob-blue/20 blur-[100px] rounded-full -mr-48 -mt-48" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-uob-red/20 blur-[100px] rounded-full -ml-48 -mb-48" />
         <div className="relative z-10">
           <div className="w-20 h-20 mb-6 bg-uob-blue rounded-[1.5rem] flex items-center justify-center shadow-premium">
             <span className="text-white font-black text-2xl">UOB</span>
           </div>
           <h1 className="text-5xl font-extrabold text-white leading-tight italic">
-            Le réseau<br/><span className="text-uob-blue text-6xl">académique</span><br/>de l'UOB.
+            Le réseau<br />
+            <span className="text-uob-blue text-6xl">académique</span><br />
+            de l'UOB.
           </h1>
           <p className="mt-6 text-slate-400 font-medium text-lg leading-relaxed">
-            Université Officielle de Bukavu<br/>
+            Université Officielle de Bukavu<br />
             <span className="text-slate-500 text-sm">Bukavu, République Démocratique du Congo</span>
           </p>
         </div>
         <div className="relative z-10 flex items-center space-x-3 text-white/50 text-xs font-bold uppercase tracking-widest">
-          <ShieldCheck size={16}/><span>Données sécurisées · Étudiants UOB</span>
+          <ShieldCheck size={16} />
+          <span>Données sécurisées · Étudiants UOB uniquement</span>
         </div>
       </div>
 
-      {/* Formulaire */}
+      {/* ── Formulaire ───────────────────────────────────────────────── */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md space-y-8 animate-fade-in-up">
 
+          {/* Logo mobile */}
           <div className="lg:hidden flex flex-col items-center mb-4">
             <div className="w-20 h-20 bg-uob-blue rounded-[1.5rem] flex items-center justify-center shadow-premium">
               <span className="text-white font-black text-2xl">UOB</span>
             </div>
-            <p className="mt-2 text-xs text-slate-400 font-bold uppercase tracking-widest">Edunet · UOB</p>
+            <p className="mt-2 text-xs text-slate-400 font-bold uppercase tracking-widest">
+              Edunet · UOB
+            </p>
           </div>
 
           <div className="text-center">
@@ -166,45 +212,73 @@ const AuthPage: React.FC = () => {
               {isForgot ? 'Récupération' : isLogin ? 'Bon retour !' : 'Inscription'}
             </h2>
             <p className="mt-2 text-sm text-slate-500 font-medium">
-              {isForgot ? 'Réinitialisez votre mot de passe'
-               : isLogin ? 'Connectez-vous à Edunet'
-               : 'Créez votre compte UOB'}
+              {isForgot
+                ? 'Réinitialisez votre mot de passe'
+                : isLogin
+                ? 'Connectez-vous à Edunet'
+                : 'Créez votre compte UOB'}
             </p>
           </div>
 
           <form onSubmit={handleAuth} className="mt-8 space-y-4">
 
+            {/* Erreur */}
             {error && (
               <div className="p-4 bg-red-50 text-uob-red rounded-2xl text-sm font-bold border border-red-100 flex items-start animate-fade-in">
-                <AlertCircle size={18} className="mr-2 shrink-0 mt-0.5"/>
+                <AlertCircle size={18} className="mr-2 shrink-0 mt-0.5" />
                 <span className="whitespace-pre-line">{error}</span>
               </div>
             )}
+
+            {/* Succès / Info */}
             {message && (
-              <div className="p-4 bg-green-50 text-green-600 rounded-2xl text-sm font-bold border border-green-100 flex items-start">
-                <RefreshCw size={18} className="mr-2 shrink-0 mt-0.5"/>
+              <div className="p-4 bg-green-50 text-green-700 rounded-2xl text-sm font-bold border border-green-100 flex items-start">
+                <RefreshCw size={18} className="mr-2 shrink-0 mt-0.5" />
                 <span>{message}</span>
               </div>
             )}
 
-            {/* Champs inscription */}
+            {/* ── Champs inscription ──────────────────────────────────── */}
             {!isLogin && !isForgot && (
               <div className="grid grid-cols-1 gap-4">
+
+                {/* Nom complet */}
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
-                  <input type="text" placeholder="Nom complet (Prénom Nom)" value={fullName}
-                    onChange={e => setFullName(e.target.value)} required className={inputCls}/>
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Nom complet (Prénom Nom)"
+                    value={fullName}
+                    onChange={e => setFullName(e.target.value)}
+                    required
+                    className={inputCls}
+                  />
                 </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Matricule */}
                   <div className="relative">
-                    <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
-                    <input type="text" placeholder="Matricule (ex: 11111)" value={studentId}
-                      onChange={e => setStudentId(e.target.value)} inputMode="numeric" pattern="\d*" className={inputCls}/>
+                    <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="text"
+                      placeholder="Matricule (ex: 42486)"
+                      value={studentId}
+                      onChange={e => setStudentId(e.target.value)}
+                      inputMode="numeric"
+                      pattern="\d*"
+                      className={inputCls}
+                    />
                   </div>
+
+                  {/* Promotion */}
                   <div className="relative">
-                    <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={18}/>
-                    <select value={promotion} onChange={e => setPromotion(e.target.value)} required
-                      className={inputCls + ' appearance-none cursor-pointer pr-10'}>
+                    <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={18} />
+                    <select
+                      value={promotion}
+                      onChange={e => setPromotion(e.target.value)}
+                      required
+                      className={inputCls + ' appearance-none cursor-pointer pr-10'}
+                    >
                       <option value="" disabled>Promotion</option>
                       <optgroup label="── Licence ──">
                         {PROMOTIONS.filter(p => p.cycle === 'Licence').map(p => (
@@ -217,24 +291,38 @@ const AuthPage: React.FC = () => {
                         ))}
                       </optgroup>
                     </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18}/>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                   </div>
                 </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Filière */}
                   <div className="relative">
-                    <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
-                    <input type="text" placeholder="Filière (ex: SAPU, Info…)" value={faculty}
-                      onChange={e => setFaculty(e.target.value)} required className={inputCls}/>
+                    <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="text"
+                      placeholder="Filière (ex: Informatique)"
+                      value={faculty}
+                      onChange={e => setFaculty(e.target.value)}
+                      required
+                      className={inputCls}
+                    />
                   </div>
+
+                  {/* Genre */}
                   <div className="relative">
-                    <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={18}/>
-                    <select value={gender} onChange={e => setGender(e.target.value as 'M' | 'F')} required
-                      className={inputCls + ' appearance-none cursor-pointer pr-10'}>
+                    <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={18} />
+                    <select
+                      value={gender}
+                      onChange={e => setGender(e.target.value as 'M' | 'F')}
+                      required
+                      className={inputCls + ' appearance-none cursor-pointer pr-10'}
+                    >
                       <option value="" disabled>Genre</option>
                       <option value="M">Homme (M)</option>
                       <option value="F">Femme (F)</option>
                     </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18}/>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                   </div>
                 </div>
               </div>
@@ -242,29 +330,47 @@ const AuthPage: React.FC = () => {
 
             {/* Email */}
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
-              <input type="email" placeholder="Adresse email" value={email}
-                onChange={e => setEmail(e.target.value)} autoComplete="email" required className={inputCls}/>
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type="email"
+                placeholder="Adresse email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                autoComplete="email"
+                required
+                className={inputCls}
+              />
             </div>
 
             {/* Mot de passe */}
             {!isForgot && (
               <div className="space-y-2">
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
-                  <input type={showPwd ? 'text' : 'password'} placeholder="Mot de passe (min. 6 caractères)"
-                    value={password} onChange={e => setPassword(e.target.value)}
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type={showPwd ? 'text' : 'password'}
+                    placeholder="Mot de passe (min. 6 caractères)"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
                     autoComplete={isLogin ? 'current-password' : 'new-password'}
-                    required className={inputCls + ' pr-12'}/>
-                  <button type="button" onClick={() => setShowPwd(!showPwd)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-uob-blue">
-                    {showPwd ? <EyeOff size={20}/> : <Eye size={20}/>}
+                    required
+                    className={inputCls + ' pr-12'}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd(!showPwd)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-uob-blue"
+                  >
+                    {showPwd ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
                 {isLogin && (
                   <div className="flex justify-end">
-                    <button type="button" onClick={() => setMode('forgot')}
-                      className="text-xs font-bold text-slate-400 hover:text-uob-blue">
+                    <button
+                      type="button"
+                      onClick={() => setMode('forgot')}
+                      className="text-xs font-bold text-slate-400 hover:text-uob-blue transition-colors"
+                    >
                       Mot de passe oublié ?
                     </button>
                   </div>
@@ -272,17 +378,40 @@ const AuthPage: React.FC = () => {
               </div>
             )}
 
-            <button type="submit" disabled={loading}
-              className="w-full py-5 bg-uob-blue text-white font-black rounded-2xl shadow-xl shadow-uob-blue/20 flex items-center justify-center space-x-2 transition-all active:scale-95 disabled:opacity-50 uppercase tracking-widest text-sm">
-              <span>{loading ? <Spinner/> : isForgot ? 'Envoyer le lien' : isLogin ? 'Se connecter' : "S'inscrire"}</span>
-              {!loading && <ArrowRight size={20}/>}
+            {/* Bouton submit */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-5 bg-uob-blue text-white font-black rounded-2xl shadow-xl shadow-uob-blue/20 flex items-center justify-center space-x-2 transition-all active:scale-95 disabled:opacity-50 uppercase tracking-widest text-sm"
+            >
+              <span>
+                {loading
+                  ? <Spinner />
+                  : isForgot
+                  ? 'Envoyer le lien'
+                  : isLogin
+                  ? 'Se connecter'
+                  : "S'inscrire"}
+              </span>
+              {!loading && <ArrowRight size={20} />}
             </button>
           </form>
 
+          {/* Bascule login ↔ signup */}
           <p className="text-center text-slate-500 font-bold text-sm">
-            {isForgot ? 'Retour à la ' : isLogin ? 'Nouveau étudiant UOB ? ' : 'Déjà inscrit ? '}
-            <button onClick={() => setMode(isForgot ? 'login' : isLogin ? 'signup' : 'login')}
-              className="ml-1 text-uob-blue hover:underline font-black">
+            {isForgot
+              ? 'Retour à la '
+              : isLogin
+              ? 'Nouveau étudiant UOB ? '
+              : 'Déjà inscrit ? '}
+            <button
+              onClick={() => {
+                setError(null);
+                setMessage(null);
+                setMode(isForgot ? 'login' : isLogin ? 'signup' : 'login');
+              }}
+              className="ml-1 text-uob-blue hover:underline font-black"
+            >
               {isForgot ? 'Connexion' : isLogin ? "S'inscrire" : 'Se connecter'}
             </button>
           </p>
