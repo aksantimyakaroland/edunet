@@ -1,115 +1,148 @@
 /**
  * @fileoverview Banner d'installation PWA — Edunet / UOB
  *
- * Supporte les deux plateformes :
+ * ARCHITECTURE CORRECTE POUR ANDROID :
  *
- * ANDROID :
- *   - Écoute l'événement `beforeinstallprompt` natif du navigateur
- *   - Affiche un bouton "Installer" → déclenche le prompt natif Android
- *   - Si le prompt n'est pas disponible (app déjà installée ou navigateur
- *     non compatible), n'affiche rien
+ * Le problème précédent : `beforeinstallprompt` se déclenche AVANT que
+ * React soit chargé. En écoutant l'événement dans useEffect(), on rate
+ * systématiquement le prompt → le banner n'apparaissait jamais.
+ *
+ * La solution : index.html capture l'événement immédiatement dans un
+ * <script> inline et le stocke dans window.__pwaPrompt. Ce composant
+ * le récupère ensuite depuis window au montage.
+ *
+ * ANDROID (Chrome, Samsung Internet, Edge…) :
+ *   - Lit window.__pwaPrompt (capturé avant React)
+ *   - Affiche un bouton "Installer maintenant"
+ *   - Déclenche le prompt natif Android au clic
  *
  * iOS (Safari) :
- *   - `beforeinstallprompt` n'existe pas sur iOS/Safari
- *   - Affiche des instructions manuelles (partager → écran d'accueil)
- *   - Affiché après 3 secondes si l'app n'est pas déjà installée
- *
- * Les deux cas :
- *   - Ne s'affiche jamais si l'app est déjà en mode standalone (installée)
- *   - Mémorise le refus dans sessionStorage pour ne pas re-afficher
+ *   - beforeinstallprompt n'existe pas sur iOS
+ *   - Affiche des instructions manuelles après 2 secondes
  *
  * @author Roland Myaka
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Download, Smartphone, X, Share, PlusSquare } from 'lucide-react';
+
+// Typage de window.__pwaPrompt (injecté par index.html)
+declare global {
+  interface Window {
+    __pwaPrompt:    any;
+    __pwaInstalled: boolean;
+  }
+}
 
 interface Props {
   onComplete: () => void;
 }
 
 const InstallPWABanner: React.FC<Props> = ({ onComplete }) => {
-  // Prompt natif Android (BeforeInstallPromptEvent)
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [visible, setVisible]               = useState(false);
-  const [platform, setPlatform]             = useState<'android' | 'ios' | 'none'>('none');
-  const [installing, setInstalling]         = useState(false);
+  const [visible,    setVisible]    = useState(false);
+  const [platform,   setPlatform]   = useState<'android' | 'ios' | 'none'>('none');
+  const [installing, setInstalling] = useState(false);
+  const promptRef = useRef<any>(null);
 
   useEffect(() => {
-    // ── Détecter si déjà installé en mode standalone ────────────────────
+    // ── 1. App déjà installée en mode standalone → ne rien faire ─────────
     const isStandalone =
       (window.navigator as any).standalone === true ||
-      window.matchMedia('(display-mode: standalone)').matches;
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.__pwaInstalled === true;
 
-    if (isStandalone) {
-      // L'app est déjà installée → ne rien afficher
-      onComplete();
-      return;
-    }
+    if (isStandalone) { onComplete(); return; }
 
-    // ── Détecter si l'utilisateur a déjà refusé (session en cours) ──────
-    const dismissed = sessionStorage.getItem('pwa-dismissed');
-    if (dismissed) {
-      onComplete();
-      return;
-    }
+    // ── 2. Utilisateur a déjà fermé le banner cette session ──────────────
+    if (sessionStorage.getItem('pwa-dismissed')) { onComplete(); return; }
 
-    // ── Détecter la plateforme ───────────────────────────────────────────
-    const ua        = window.navigator.userAgent.toLowerCase();
-    const isIos     = /iphone|ipad|ipod/.test(ua);
-    const isSafari  = /safari/.test(ua) && !/chrome/.test(ua);
-    const isAndroid = /android/.test(ua);
+    // ── 3. Détecter la plateforme ─────────────────────────────────────────
+    const ua      = window.navigator.userAgent.toLowerCase();
+    const isIos   = /iphone|ipad|ipod/.test(ua);
+    const isSafari = /safari/.test(ua) && !/chrome|chromium|crios|fxios/.test(ua);
 
     if (isIos && isSafari) {
-      // iOS Safari → instructions manuelles après 3s
+      // iOS Safari : instructions manuelles
       setPlatform('ios');
-      const t = setTimeout(() => setVisible(true), 3000);
+      const t = setTimeout(() => setVisible(true), 2000);
       return () => clearTimeout(t);
+    }
 
-    } else if (!isIos) {
-      // Android (Chrome, Samsung, Edge…) ou Desktop
-      // → écouter l'événement beforeinstallprompt
-      const handlePrompt = (e: Event) => {
-        e.preventDefault();
-        setDeferredPrompt(e);
+    // ── 4. Android / Desktop : lire le prompt depuis window ──────────────
+    // On vérifie d'abord si le prompt est déjà disponible (capturé avant React)
+    const checkPrompt = () => {
+      if (window.__pwaPrompt) {
+        promptRef.current = window.__pwaPrompt;
         setPlatform('android');
         setVisible(true);
-      };
+        return true;
+      }
+      return false;
+    };
 
-      window.addEventListener('beforeinstallprompt', handlePrompt);
+    // Vérification immédiate
+    if (checkPrompt()) return;
 
-      // Si l'app est installée depuis l'extérieur
-      window.addEventListener('appinstalled', () => {
-        setVisible(false);
-        setDeferredPrompt(null);
-        onComplete();
-      });
+    // Si pas encore disponible, écouter l'événement et aussi vérifier
+    // périodiquement pendant 10 secondes (cas où l'événement arrive tard)
+    const handlePrompt = (e: Event) => {
+      e.preventDefault();
+      window.__pwaPrompt = e;
+      promptRef.current  = e;
+      setPlatform('android');
+      setVisible(true);
+    };
 
-      return () => {
-        window.removeEventListener('beforeinstallprompt', handlePrompt);
-      };
-    }
+    window.addEventListener('beforeinstallprompt', handlePrompt);
+
+    // Polling de secours : vérifie toutes les 500ms pendant 10s
+    let checks = 0;
+    const poll = setInterval(() => {
+      checks++;
+      if (checkPrompt() || checks >= 20) clearInterval(poll);
+    }, 500);
+
+    // Écouter l'installation depuis l'extérieur (barre d'adresse Chrome)
+    const handleInstalled = () => {
+      setVisible(false);
+      window.__pwaPrompt    = null;
+      window.__pwaInstalled = true;
+      promptRef.current     = null;
+      onComplete();
+    };
+    window.addEventListener('appinstalled', handleInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handlePrompt);
+      window.removeEventListener('appinstalled', handleInstalled);
+      clearInterval(poll);
+    };
   }, [onComplete]);
 
-  // ── Gérer le clic sur "Installer" (Android) ──────────────────────────
+  // ── Déclencher l'installation Android ────────────────────────────────
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
+    const prompt = promptRef.current || window.__pwaPrompt;
+    if (!prompt) {
+      console.warn('[Edunet PWA] Prompt non disponible');
+      return;
+    }
     setInstalling(true);
     try {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
+      prompt.prompt();
+      const { outcome } = await prompt.userChoice;
       if (outcome === 'accepted') {
-        setDeferredPrompt(null);
+        window.__pwaPrompt = null;
+        promptRef.current  = null;
         setVisible(false);
         onComplete();
       }
     } catch (err) {
-      console.error('[Edunet PWA] Erreur install:', err);
+      console.error('[Edunet PWA] Erreur installation:', err);
     } finally {
       setInstalling(false);
     }
   };
 
-  // ── Fermer le banner ─────────────────────────────────────────────────
+  // ── Fermer le banner ──────────────────────────────────────────────────
   const handleClose = () => {
     sessionStorage.setItem('pwa-dismissed', '1');
     setVisible(false);
@@ -122,11 +155,12 @@ const InstallPWABanner: React.FC<Props> = ({ onComplete }) => {
     <div
       className="fixed bottom-24 left-3 right-3 md:left-auto md:right-6 md:w-96 z-[100] animate-fade-in-up"
       role="dialog"
-      aria-label="Installer l'application Edunet"
+      aria-label="Installer Edunet"
     >
       <div className="glass bg-white/95 rounded-[2rem] shadow-premium border border-slate-100 overflow-hidden">
         <div className="p-5">
-          {/* En-tête */}
+
+          {/* En-tête commun */}
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center space-x-3">
               <div className="bg-uob-blue/10 p-2.5 rounded-2xl text-uob-blue flex-shrink-0">
@@ -143,18 +177,18 @@ const InstallPWABanner: React.FC<Props> = ({ onComplete }) => {
             </div>
             <button
               onClick={handleClose}
-              className="p-1.5 text-slate-300 hover:text-slate-500 transition-colors rounded-xl hover:bg-slate-100 flex-shrink-0 ml-2"
+              className="p-1.5 text-slate-300 hover:text-slate-500 rounded-xl hover:bg-slate-100 flex-shrink-0 ml-2 transition-colors"
               aria-label="Fermer"
             >
               <X size={18} />
             </button>
           </div>
 
-          {/* Contenu selon la plateforme */}
+          {/* ── Android : bouton natif ────────────────────────────────── */}
           {platform === 'android' && (
             <>
               <p className="text-xs text-slate-500 font-medium leading-relaxed mb-4">
-                Installez l'application Edunet pour un accès hors ligne et des notifications instantanées.
+                Installez Edunet pour un accès hors ligne et des notifications instantanées.
               </p>
               <button
                 onClick={handleInstallClick}
@@ -173,10 +207,11 @@ const InstallPWABanner: React.FC<Props> = ({ onComplete }) => {
             </>
           )}
 
+          {/* ── iOS Safari : instructions manuelles ──────────────────── */}
           {platform === 'ios' && (
             <>
               <p className="text-xs text-slate-500 font-medium leading-relaxed mb-3">
-                Ajoutez Edunet à votre écran d'accueil pour un accès rapide :
+                Ajoutez Edunet à votre écran d'accueil :
               </p>
               <div className="bg-slate-50 rounded-2xl p-4 space-y-3 border border-slate-100">
                 <div className="flex items-center space-x-3">
@@ -204,6 +239,7 @@ const InstallPWABanner: React.FC<Props> = ({ onComplete }) => {
               </button>
             </>
           )}
+
         </div>
       </div>
     </div>

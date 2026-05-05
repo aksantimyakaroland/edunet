@@ -1,54 +1,157 @@
 <!DOCTYPE html>
-<html lang="fr" style="scroll-behavior:smooth;scrollbar-gutter:stable;">
+<html lang="fr" style="scroll-behavior: smooth; scrollbar-gutter: stable;">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-  <title>Edunet | Réseau Académique de l'UOB</title>
-  <meta name="description" content="Réseau social académique officiel des étudiants de l'Université Officielle de Bukavu — Bukavu, RDC."/>
-  <meta name="author" content="Roland Myaka"/>
-  <meta property="og:title" content="Edunet — UOB"/>
-  <meta property="og:description" content="Le réseau académique des étudiants de l'UOB Bukavu."/>
-  <meta property="og:image" content="/logo-uob.png"/>
-  <link rel="icon" type="image/png" href="/logo-uob.png"/>
-  <link rel="apple-touch-icon" href="/logo-uob.png"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
-  <meta name="apple-mobile-web-app-title" content="Edunet"/>
-  <link rel="manifest" href="/manifest.json"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&display=swap" rel="stylesheet"/>
+  <meta charset="UTF-8" />
+
+  <!--
+  ╔══════════════════════════════════════════════════════════════╗
+  ║          EDUNET — Réseau Social Académique de l'UOB          ║
+  ║        Université Officielle de Bukavu · Bukavu, RDC         ║
+  ╠══════════════════════════════════════════════════════════════╣
+  ║  Charte graphique UOB :                                      ║
+  ║    • Bleu principal  : #0047AB  (40 %)                       ║
+  ║    • Blanc           : #FFFFFF  (40 %)                       ║
+  ║    • Rouge accent    : #CE1126  (20 %)                       ║
+  ╠══════════════════════════════════════════════════════════════╣
+  ║  TODO : Remplacer /logo-uob-placeholder.png par le logo      ║
+  ║         officiel de l'UOB quand il sera disponible.          ║
+  ╚══════════════════════════════════════════════════════════════╝
+  -->
+
+  <!-- Empêche le zoom utilisateur sur mobile pour une expérience native -->
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+  <!-- ══════════════════════════════════════════
+       SEO — Référencement naturel
+  ══════════════════════════════════════════ -->
+  <title>Edunet | Réseau Social Académique de l'UOB</title>
+  <meta name="description"
+        content="Plateforme officielle de collaboration pour les étudiants de
+                 l'Université Officielle de Bukavu. Partage de cours, projets
+                 et entraide académique sécurisée." />
+  <meta name="author"  content="UOB Digital" />
+  <meta name="robots"  content="index, follow" />
+
+  <!-- ══════════════════════════════════════════
+       Open Graph — Partage sur réseaux sociaux
+  ══════════════════════════════════════════ -->
+  <meta property="og:type"         content="website" />
+  <meta property="og:title"        content="Edunet — Réseau Académique UOB" />
+  <meta property="og:description"  content="Rejoignez la communauté exclusive
+                                             des étudiants de l'UOB Bukavu." />
+  <!-- TODO: Remplacer par l'URL réelle du logo UOB -->
+  <meta property="og:image"        content="/logo-uob-placeholder.png" />
+  <meta property="og:site_name"    content="Edunet" />
+
+  <!-- ══════════════════════════════════════════
+       PWA — Progressive Web App
+       Permet l'installation sur l'écran d'accueil
+  ══════════════════════════════════════════ -->
+  <!-- TODO: Remplacer /logo-uob-placeholder.png par le vrai logo UOB -->
+  <link rel="icon"              type="image/png" href="/logo-uob-placeholder.png" />
+  <link rel="apple-touch-icon"                   href="/logo-uob-placeholder.png" />
+  <meta name="apple-mobile-web-app-capable"           content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style"  content="default" />
+  <meta name="apple-mobile-web-app-title"             content="Edunet" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- ══════════════════════════════════════════
+       Pré-connexions réseau (performances)
+  ══════════════════════════════════════════ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Police principale : Plus Jakarta Sans (lisible, moderne) -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&display=swap"
+        rel="stylesheet" />
+
+  <!-- ══════════════════════════════════════════
+       Tailwind CSS via CDN
+  ══════════════════════════════════════════ -->
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- ══════════════════════════════════════════
+       Configuration Tailwind — Palette UOB
+  ══════════════════════════════════════════ -->
   <script>
+    /**
+     * @fileoverview Configuration Tailwind CSS pour Edunet/UOB.
+     *
+     * Toutes les couleurs de marque sont exposées comme classes utilitaires :
+     *   bg-uob-blue   / text-uob-blue   → Bleu institutionnel  #0047AB
+     *   bg-uob-red    / text-uob-red    → Rouge accent          #CE1126
+     *   bg-brand-dark / text-brand-dark → Fond sombre           #0D1B2A
+     *
+     * Utilisation dans les composants :
+     *   <button className="bg-uob-blue text-white">…</button>
+     *   <span   className="text-uob-red">…</span>
+     */
     tailwind.config = {
       theme: {
         extend: {
+
+          /* ── Couleurs de marque UOB ────────────────────────── */
           colors: {
-            'uob-blue':   '#0047AB',
-            'uob-red':    '#CE1126',
-            'brand-dark': '#0D1B2A',
+            'uob-blue':   '#0047AB',   /* Bleu institutionnel  — 40 % de la charte */
+            'uob-red':    '#CE1126',   /* Rouge accent         — 20 % de la charte */
+            'brand-dark': '#0D1B2A',   /* Fond sombre (overlays, navbar de nuit)  */
           },
-          fontFamily: { sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'] },
+
+          /* ── Typographie ───────────────────────────────────── */
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+          },
+
+          /* ── Ombres personnalisées ─────────────────────────── */
           boxShadow: {
-            'soft':    '0 2px 15px -3px rgba(0,0,0,0.07),0 4px 6px -2px rgba(0,0,0,0.05)',
-            'premium': '0 20px 25px -5px rgba(0,0,0,0.08),0 10px 10px -5px rgba(0,0,0,0.03)',
+            /* Ombre légère : cartes de post, panels */
+            'soft':    '0 2px 15px -3px rgba(0,0,0,0.07), 0 4px 6px -2px rgba(0,0,0,0.05)',
+            /* Ombre forte : modales, dropdowns */
+            'premium': '0 20px 25px -5px rgba(0,0,0,0.08), 0 10px 10px -5px rgba(0,0,0,0.03)',
           },
+
+          /* ── Animations ────────────────────────────────────── */
           animation: {
-            'fade-in-up': 'fadeInUp 0.35s cubic-bezier(0.4,0,0.2,1) forwards',
+            /* Entrée depuis le bas + fondu (composants au chargement) */
+            'fade-in-up': 'fadeInUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+            /* Fondu simple (success states, tooltips) */
             'fade-in':    'fadeIn 0.25s ease-out forwards',
-            'slide-in':   'slideIn 0.3s cubic-bezier(0.16,1,0.3,1) forwards',
-            'page-enter': 'pageEnter 0.4s cubic-bezier(0.4,0,0.2,1) forwards',
+            /* Pulsation douce (indicateurs de chargement) */
+            'pulse-soft': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            /* Entrée depuis la droite (navigation mobile, drawers) */
+            'slide-in':   'slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            /* Transition entre pages (router) */
+            'page-enter': 'pageEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
           },
+
           keyframes: {
-            fadeInUp:  { from:{opacity:'0',transform:'translateY(10px)'}, to:{opacity:'1',transform:'translateY(0)'} },
-            fadeIn:    { from:{opacity:'0'}, to:{opacity:'1'} },
-            slideIn:   { from:{transform:'translateX(100%)'}, to:{transform:'translateX(0)'} },
-            pageEnter: { from:{opacity:'0',transform:'translateY(4px) scale(0.99)'}, to:{opacity:'1',transform:'translateY(0) scale(1)'} },
+            fadeInUp: {
+              from: { opacity: '0', transform: 'translateY(10px)' },
+              to:   { opacity: '1', transform: 'translateY(0)' },
+            },
+            fadeIn: {
+              from: { opacity: '0' },
+              to:   { opacity: '1' },
+            },
+            slideIn: {
+              from: { transform: 'translateX(100%)' },
+              to:   { transform: 'translateX(0)' },
+            },
+            pageEnter: {
+              from: { opacity: '0', transform: 'translateY(4px) scale(0.99)' },
+              to:   { opacity: '1', transform: 'translateY(0) scale(1)' },
+            },
           },
         },
       },
     };
   </script>
+
+  <!-- ══════════════════════════════════════════
+       Import Map — Résolution des modules ESM
+       Permet d'importer les packages npm directement
+       dans les fichiers TypeScript sans bundler local.
+  ══════════════════════════════════════════ -->
   <script type="importmap">
   {
     "imports": {
@@ -56,6 +159,7 @@
       "react":                       "https://aistudiocdn.com/react@^19.2.0",
       "react-dom/":                  "https://aistudiocdn.com/react-dom@^19.2.0/",
       "react-dom":                   "https://aistudiocdn.com/react-dom@^19.2.0",
+      "@google/genai":               "https://aistudiocdn.com/@google/genai@^1.27.0",
       "react-router-dom":            "https://aistudiocdn.com/react-router-dom@^7.9.4",
       "lucide-react":                "https://aistudiocdn.com/@lucide/lucide-react@^0.471.0",
       "@supabase/supabase-js":       "https://aistudiocdn.com/@supabase/supabase-js@^2.76.1",
@@ -68,32 +172,187 @@
     }
   }
   </script>
+
+  <!-- ══════════════════════════════════════════
+       Styles globaux CSS
+  ══════════════════════════════════════════ -->
   <style>
-    body{background:#F5F7FA;color:#1A2332;-webkit-font-smoothing:antialiased;overflow-x:hidden;-webkit-tap-highlight-color:transparent;user-select:none;}
-    input,textarea{user-select:text;}
-    .glass{background:rgba(255,255,255,0.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
-    ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}
-    ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:10px}
-    ::-webkit-scrollbar-thumb:hover{background:#0047AB}
-    .no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
-    .page-transition{animation:pageEnter 0.4s cubic-bezier(0.4,0,0.2,1) forwards;will-change:transform,opacity}
-    .social-image-container{position:relative;width:100%;overflow:hidden;border-radius:2rem;background:#EEF2F7}
-    .social-image-container img{width:100%;height:auto;max-height:600px;object-fit:cover;display:block;transition:transform 0.6s cubic-bezier(0.4,0,0.2,1)}
-    .social-image-container:hover img{transform:scale(1.03)}
-    @media screen and (min-width:320px) and (max-width:900px) and (orientation:landscape){#landscape-lock{display:flex!important}#root{display:none!important}}
-    #landscape-lock{display:none;position:fixed;inset:0;background:#0D1B2A;color:white;z-index:9999;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px}
+
+    /* ── Base ───────────────────────────────────────────────────── */
+    body {
+      background-color: #F5F7FA;            /* Fond général légèrement bleuté    */
+      color: #1A2332;                        /* Texte principal — quasi-noir froid */
+      -webkit-font-smoothing: antialiased;   /* Lissage des polices sur macOS/iOS  */
+      overflow-x: hidden;                    /* Pas de scroll horizontal           */
+      -webkit-tap-highlight-color: transparent; /* Supprime le flash bleu au tap iOS */
+      user-select: none;                     /* Désactive la sélection accidentelle */
+    }
+
+    /* Les champs de formulaire restent sélectionnables */
+    input, textarea { user-select: text; }
+
+    /* ── Effet verre dépoli ──────────────────────────────────────
+       Utilisé sur la Navbar et certaines modales.
+       Donne l'illusion d'un fond translucide flou.          */
+    .glass {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    /* ── Scrollbar personnalisée (navigateurs WebKit) ────────── */
+    ::-webkit-scrollbar       { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 10px;
+    }
+    /* Couleur UOB au survol de la scrollbar */
+    ::-webkit-scrollbar-thumb:hover { background: #0047AB; }
+
+    /* Classe utilitaire : masque la scrollbar visuellement
+       tout en conservant le scroll (listes horizontales, etc.) */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* ── Transitions entre pages ────────────────────────────────
+       Appliquée par AppContent sur le wrapper de chaque page.  */
+    .page-transition {
+      animation: pageEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      will-change: transform, opacity;
+    }
+
+    /* ── Conteneur d'image de post (zoom au survol) ─────────────
+       Enveloppe les images dans les PostCard et GroupPostCard.  */
+    .social-image-container {
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+      border-radius: 2rem;
+      background-color: #EEF2F7;
+    }
+    .social-image-container img {
+      width: 100%;
+      height: auto;
+      max-height: 600px;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .social-image-container:hover img {
+      transform: scale(1.03); /* Zoom subtil au survol sur desktop */
+    }
+
+    /* ── Verrouillage mode paysage (mobile) ──────────────────────
+       L'application est conçue pour le mode portrait uniquement.
+       Cette media query affiche un écran de blocage en paysage
+       sur les petits appareils (< 900 px de large).            */
+    @media screen and (min-width: 320px) and (max-width: 900px) and (orientation: landscape) {
+      #landscape-lock { display: flex !important; }
+      #root           { display: none  !important; }
+    }
+
+    /* Écran de verrouillage paysage (masqué par défaut) */
+    #landscape-lock {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #0D1B2A;   /* Fond sombre UOB */
+      color: white;
+      z-index: 9999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 20px;
+    }
+
   </style>
+
+  <!-- Feuille de style supplémentaire générée par Vite (animations, utilitaires) -->
+  <link rel="stylesheet" href="/index.css" />
+
+  <!--
+    ══════════════════════════════════════════════════════════════
+    CAPTURE PWA — beforeinstallprompt (Android / Chrome)
+
+    Chrome déclenche cet événement très tôt, AVANT que React
+    soit chargé. Si on l'écoute seulement dans un composant React,
+    il est souvent déjà passé et perdu.
+
+    Solution : on le capture ici, dans un <script> inline exécuté
+    immédiatement, et on le stocke sur window.__pwaPrompt.
+    InstallPWABanner.tsx le récupère ensuite depuis window.
+    ══════════════════════════════════════════════════════════════
+  -->
+  <script>
+    window.__pwaPrompt = null;
+    window.__pwaInstalled = false;
+
+    window.addEventListener('beforeinstallprompt', function(e) {
+      // Empêcher Chrome d'afficher sa propre mini-barre d'installation
+      e.preventDefault();
+      // Stocker le prompt pour l'utiliser plus tard via le bouton React
+      window.__pwaPrompt = e;
+      console.log('[Edunet PWA] beforeinstallprompt capturé ✅');
+    });
+
+    window.addEventListener('appinstalled', function() {
+      window.__pwaInstalled = true;
+      window.__pwaPrompt = null;
+      console.log('[Edunet PWA] Application installée ✅');
+    });
+  </script>
 </head>
+
 <body>
+
+  <!-- ══════════════════════════════════════════
+       Écran de verrouillage paysage
+       Visible uniquement quand l'appareil mobile
+       est retourné en mode paysage.
+  ══════════════════════════════════════════ -->
   <div id="landscape-lock">
     <div class="animate-bounce mb-6">
-      <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#0047AB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+      <!-- Icône téléphone (SVG inline — aucune dépendance) -->
+      <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"
+           viewBox="0 0 24 24" fill="none" stroke="#0047AB"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect width="14" height="20" x="5" y="2" rx="2" ry="2"/>
+        <path d="M12 18h.01"/>
+      </svg>
     </div>
-    <h2 style="font-size:1.25rem;font-weight:900;font-style:italic;text-transform:uppercase;">Edunet &middot; UOB</h2>
-    <p style="margin-top:1rem;color:#94A3B8;font-weight:500;line-height:1.7rem;">Veuillez utiliser votre appareil en mode<br/><strong style="color:#fff;">portrait</strong>.</p>
+    <h2 style="font-size:1.25rem;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:.05em;">
+      Edunet &middot; UOB
+    </h2>
+    <p style="margin-top:1rem;color:#94A3B8;font-weight:500;line-height:1.7rem;">
+      Veuillez utiliser votre appareil en mode<br/>
+      <strong style="color:#ffffff;">portrait</strong>
+      pour une meilleure expérience.
+    </p>
   </div>
+
+  <!-- ══════════════════════════════════════════
+       Point de montage des modales (React Portal)
+       Les composants Modal (PostDetailModal,
+       LikerListModal, ImageModal…) s'insèrent ici
+       via ReactDOM.createPortal() pour éviter
+       les conflits de z-index et d'overflow.
+  ══════════════════════════════════════════ -->
   <div id="modal-root"></div>
+
+  <!-- ══════════════════════════════════════════
+       Point de montage principal React
+       Le composant <App /> est rendu ici
+       par /index.tsx au démarrage.
+  ══════════════════════════════════════════ -->
   <div id="root"></div>
+
+  <!-- Point d'entrée TypeScript -->
   <script type="module" src="/index.tsx"></script>
+
 </body>
 </html>
